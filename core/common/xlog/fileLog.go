@@ -1,4 +1,16 @@
 package xlog
+//
+// xlog.LogInst().Open()
+// xlog.LogInst().LogInfo("Spider is running ... ")
+// xlog.LogInst().Close()
+//
+
+// Example
+// xlog.LogInst().Open()
+// xlog.LogInst().LogInfo("Spider is running ... ")
+// xlog.LogInst().LogError("xxx")
+// xlog.StraceInst().Println("This is a error!!! ...")
+// ..........................................................................
 
 import (
 	"log"
@@ -82,5 +94,9 @@ func ( this *fileLog ) log ( lable string, str string ){
 
 func ( this *fileLog ) LogInfo( str string ){
 	this.log( "[INFO]", str )
+}
+
+func ( this *fileLog ) LogError( str string ){
+	this .log( "[ERROR]", str )
 }
 
