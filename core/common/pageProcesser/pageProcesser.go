@@ -1,5 +1,8 @@
 package pageProcesser
+
+import "github.com/johnlion/spider/core/common/page"
+
 type PageProcesser interface{
-	Processer()
+	Processer(p *page.Page )
 	Finish()
 }

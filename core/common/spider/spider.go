@@ -8,21 +8,29 @@ import (
 	"github.com/johnlion/spider/core/common/request"
 	"github.com/johnlion/spider/core/common/pageItems"
 	"github.com/johnlion/spider/core/common/pipeline"
-
-	"os"
-
 	"github.com/johnlion/spider/core/common/resourceManage"
+	"time"
+	"os"
+	"fmt"
+	"math/rand"
+	"github.com/johnlion/spider/core/common/page"
 )
 
 type Spider struct{
 	tastname string
-	threadnum int
+	threadnum uint
 	exitWhenComplete bool
 	pPageProcesser  pageProcesser.PageProcesser
 	pScheduler scheduler.Scheduler
 	pDownloader downloader.Downloader
 	pPipelines []pipeline.Pipeline
 	mc resourceManage.ResourceMange
+
+	startSleeptime uint
+	endSleeptime uint
+	sleeptype string
+
+
 
 
 
@@ -86,6 +94,8 @@ func ( this *Spider ) GetAllByRequest( reqs []*request.Request ) []*pageItems.Pa
 
 	this.Run()
 
+	fmt.Printf( "%v", pip.GetCollected() )
+	os.Exit(1)
 	return pip.GetCollected()
 
 }
@@ -95,10 +105,40 @@ func ( this *Spider ) Run(){
 		this.threadnum = 1
 	}
 
+	this.mc = resourceManage.NewResourceManageChan( this.threadnum )
 
-	os.Exit(1)
+	for {
+		req := this.pScheduler.Poll()
+		if this.mc.Has() == 0 && req == nil && this.exitWhenComplete{
+			xlog.StraceInst().Println( "**** executed callback ****" )
+			this.pPageProcesser.Finish()
+			xlog.StraceInst().Println( "**** end spider ****" )
+			break
+		}else if req == nil {
+			time.Sleep( 500 * time.Millisecond  )
+			continue
+		}
+		this.mc.GetOne()
+
+		go func ( req *request.Request ){
+			defer this.mc.FreeOne()
+			xlog.StraceInst().Println( "start crawl: " + req.GetUrl() )
+			this.pageProcess( req )
+		}( req )
+	}
+	this.close()
 }
 
+func ( this *Spider ) close(){
+	this.SetScheduler( scheduler.NewSchedulerQUeue( false ) )
+	this.SetDownloader( downloader.NewDownloaderHttp() )
+	this.exitWhenComplete = true
+}
+
+func ( this *Spider ) AddPipeline( p pipeline.Pipeline ) *Spider{
+	this.pPipelines = append( this.pPipelines, p )
+	return this
+}
 
 func ( this *Spider ) AddRequest( req *request.Request ) *Spider{
 	if req == nil{
@@ -117,10 +157,27 @@ func ( this *Spider ) AddRequests ( reqs []*request.Request ) *Spider{
 	return this
 }
 
+//core processer
+func ( this *Spider ) pageProcess( req *request.Request ){
+	var p *page.Page
 
-func ( this *Spider ) AddPipeline( p pipeline.Pipeline ) *Spider{
-	this.pPipelines = append( this.pPipelines, p )
-	return this
+	defer func(){
+		if err := recover(); err != nil{ // do not affect other
+			if strerr , ok := err.(string); ok{
+				xlog.LogInst().LogError( strerr )
+			}else{
+				xlog.LogInst().LogError( "pageProcess error" )
+			}
+		}
+	}()
+
+	//download page
+	for i:=0; i<3; i++{
+		this.sleep()
+		p = this.pDownloader.Download(  req )
+	}
+
+
 }
 
 func ( this *Spider ) SetScheduler( s scheduler.Scheduler ) *Spider{
@@ -147,3 +204,11 @@ func ( this *Spider ) GetDownloader() downloader.Downloader {
 //return this
 //}
 
+func ( this *Spider ) sleep(){
+	if  this.sleeptype == "fixed" {
+		time.Sleep( time.Duration( this.startSleeptime )  * time.Millisecond )
+	}else if this.sleeptype == "rand"{
+		sleeptime := rand.Intn( int( this.endSleeptime-this.startSleeptime ) ) + int( this.startSleeptime )
+		time.Sleep(  time.Duration(  sleeptime ) * time.Millisecond  )
+	}
+}

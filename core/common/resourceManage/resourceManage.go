@@ -1,7 +1,7 @@
 package resourceManage
 
 type ResourceMange interface {
-	Getone()
+	GetOne()
 	FreeOne()
 	Has() uint
 	Left() uint

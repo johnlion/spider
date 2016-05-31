@@ -6,17 +6,12 @@ import(
 
 func TestResourceManage( t *testing.T ){
 	var mc *resourceManage.ResourceManageChan
-	mc = resourceManage.NewResourceManageChan(1)
+	mc = resourceManage.NewResourceManageChan(10)
+	for{
 	mc.GetOne()
 	println(mc.Has())
 	mc.FreeOne()
 	println(mc.Has())
-	mc.GetOne()
-	println(mc.Has())
-	mc.FreeOne()
-	println(mc.Has())
-	mc.GetOne()
-	println(mc.Has())
-	mc.FreeOne()
-	println(mc.Has())
+	}
+
 }

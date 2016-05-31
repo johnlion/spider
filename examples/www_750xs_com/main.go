@@ -5,6 +5,7 @@ import(
 	"github.com/johnlion/spider/core/common/spider"
 	"fmt"
 	"github.com/johnlion/spider/core/common/request"
+	"github.com/johnlion/spider/core/common/page"
 )
 
 //
@@ -21,7 +22,9 @@ func NewMyPageProcesser () *MyPageProcesser{
 }
 
 // Interface
-func ( this *MyPageProcesser ) Processer(){}
+func ( this *MyPageProcesser ) Processer( p *page.Page ){
+
+}
 
 // Interface
 func ( this *MyPageProcesser ) Finish(){
