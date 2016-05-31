@@ -15,7 +15,7 @@ import (
 	"golang.org/x/net/html/charset"
 	"io/ioutil"
 	"bytes"
-	"golang.org/x/tools/godoc/util"
+	"github.com/johnlion/spider/core/common/util"
 )
 
 type DownloaderHttp struct {
@@ -45,7 +45,7 @@ func (this *DownloaderHttp )  Download( req *request.Request ) *page.Page{
 		return this.downloadJson( p, req )
 		break
 	case "jsonp":
-		return this.downloadJsonp( p , req )
+		//return this.downloadJsonp( p , req )
 		break
 	case "text":
 		return this.downloadText( p, req )
@@ -207,7 +207,7 @@ func ( this *DownloaderHttp ) downloadHtml( p *page.Page, req * request.Request 
 	}
 
 	var body string
-	if body, err = doc.; err != nil {
+	if body, err = doc.Html(); err != nil {
 		xlog.LogInst().LogError(err.Error())
 		p.SetStatus(true, err.Error())
 		return p

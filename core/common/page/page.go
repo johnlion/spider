@@ -7,6 +7,7 @@ import (
 	"github.com/bitly/go-simplejson"
 	"github.com/johnlion/spider/core/common/pageItems"
 	"strings"
+	"github.com/johnlion/spider/core/common/xlog"
 )
 
 // Page represents an entity be crawled.
@@ -204,7 +205,7 @@ func (this *Page) ResetHtmlParser() *goquery.Document {
 	var err error
 	this.docParser, err = goquery.NewDocumentFromReader(r)
 	if err != nil {
-		mlog.LogInst().LogError(err.Error())
+		xlog.LogInst().LogError(err.Error())
 		panic(err.Error())
 	}
 	return this.docParser
