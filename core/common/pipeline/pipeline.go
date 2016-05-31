@@ -9,7 +9,7 @@ type Pipeline interface {
 	// The Process implements result persistent.
 	// The items has the result be crawled.
 	// The t has informations of this crawl task.
-	Process(items *pageItems.PageItems, t comInterfaces.Task)
+	Process( items *pageItems.PageItems, t comInterfaces.Task )
 }
 
 // The interface CollectPipeline recommend result in process's memory temporarily.

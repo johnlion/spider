@@ -4,6 +4,7 @@ import (
 	"sync"
 	"container/list"
 	"crypto/md5"
+	"github.com/johnlion/spider/core/common/request"
 )
 
 type SchedulerQueue struct {
@@ -15,11 +16,40 @@ type SchedulerQueue struct {
 
 
 // Interface
-func ( this *SchedulerQueue ) Push(){
+func ( this *SchedulerQueue ) Push( requ *request.Request){
+	this.locker.Lock()
+	var key [md5.Size]byte
+	if this.rm{
+		key = md5.Sum( []byte( requ.GetUrl() ) )
+		if _, ok := this.rmKey[key]; ok{
+			this.locker.Unlock()
+			return
+		}
+	}
+	e := this.queue.PushBack( requ )
+	if this.rm{
+		this.rmKey[key] = e
+	}
+	this.locker.Unlock()
 }
 
 // Interface
-func ( this *SchedulerQueue ) Poll(){
+func ( this *SchedulerQueue ) Poll() *request.Request{
+	this.locker.Lock()
+	if this.queue.Len() <= 0 {
+		this.locker.Unlock()
+		return nil
+	}
+
+	e := this.queue.Front()
+	requ := e.Value.( *request.Request )
+	key := md5.Sum( []byte( requ.GetUrl() ) )
+	this.queue.Remove( e )
+	if this.rm {
+		delete( this.rmKey, key )
+	}
+	this.locker.Unlock()
+	return requ
 
 }
 

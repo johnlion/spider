@@ -5,11 +5,13 @@ import (
 	"github.com/johnlion/spider/core/common/xlog"
 	"github.com/johnlion/spider/core/common/scheduler"
 	"github.com/johnlion/spider/core/common/downloader"
-	//"github.com/johnlion/spider/core/common/pageItems"
 	"github.com/johnlion/spider/core/common/request"
-	//"github.com/johnlion/spider/core/common/pipeline"
 	"github.com/johnlion/spider/core/common/pageItems"
-	"fmt"
+	"github.com/johnlion/spider/core/common/pipeline"
+
+	"os"
+
+	"github.com/johnlion/spider/core/common/resourceManage"
 )
 
 type Spider struct{
@@ -19,6 +21,9 @@ type Spider struct{
 	pPageProcesser  pageProcesser.PageProcesser
 	pScheduler scheduler.Scheduler
 	pDownloader downloader.Downloader
+	pPipelines []pipeline.Pipeline
+	mc resourceManage.ResourceMange
+
 
 
 
@@ -26,7 +31,9 @@ type Spider struct{
 
 func NewSpider( taskname string , pageinst pageProcesser.PageProcesser  ) *Spider{
 	xlog.LogInst().Open()
+
 	app := &Spider{ tastname: taskname , pPageProcesser: pageinst }
+
 	// init fileLog
 	xlog.LogInst().LogInfo( "tastname " + taskname + " is processing ... " )
 	xlog.StraceInst().Println( "[tastname] " + taskname + " is processing ... " )
@@ -46,6 +53,10 @@ func NewSpider( taskname string , pageinst pageProcesser.PageProcesser  ) *Spide
 	return app
 }
 
+func ( this *Spider ) Taskname() string{
+	return this.tastname
+}
+
 //func ( this *Spider ) Get( url string, respType string ) *pageItems.PageItems{
 //	req := request.NewRequest( url, respType, "", "GET", "", nil, nil, nil, nil )
 //	return this.GetByRequest(req)
@@ -54,30 +65,40 @@ func NewSpider( taskname string , pageinst pageProcesser.PageProcesser  ) *Spide
 func ( this *Spider ) GetByRequest( req *request.Request ) *pageItems.PageItems{
 	var reqs []*request.Request
 	reqs = append( reqs, req )
-	fmt.Printf( "%s\n", reqs )
-	//items := this.GetAllByRequest( reqs )
-	//if len(items) != 0 {
-	//	return items[0]
-	//}
+	items := this.GetAllByRequest( reqs )
+	if len(items) != 0 {
+		return items[0]
+	}
+
 	return nil
 
 }
 
-//func ( this *Spider ) GetAllByRequest( reqs []*request.Request ) []*pageItems.PageItems{
-//	// push url
-//	for _, req := range reqs {
-//		//req := request.NewRequest(u, respType, urltag, method, postdata, header, cookies)
-//		this.AddRequest( req )
-//	}
-//
-//	pip := pipeline.NewCollectPipelinePageItems()
-//	this.AddPipeline(pip)
-//
-//	this.Run()
-//
-//	return pip.GetCollected()
-//
-//}
+func ( this *Spider ) GetAllByRequest( reqs []*request.Request ) []*pageItems.PageItems{
+	// push url
+	for _, req := range reqs {
+		//req := request.NewRequest(u, respType, urltag, method, postdata, header, cookies)
+		this.AddRequest( req )
+	}
+
+	pip := pipeline.NewCollectPipelinePageItems()
+	this.AddPipeline( pip )
+
+	this.Run()
+
+	return pip.GetCollected()
+
+}
+
+func ( this *Spider ) Run(){
+	if this.threadnum == 0 {
+		this.threadnum = 1
+	}
+
+
+	os.Exit(1)
+}
+
 
 func ( this *Spider ) AddRequest( req *request.Request ) *Spider{
 	if req == nil{
@@ -85,7 +106,7 @@ func ( this *Spider ) AddRequest( req *request.Request ) *Spider{
 	}else if req.GetUrl() == ""{
 		xlog.LogInst().LogError( "request is empty" )
 	}
-	this.pScheduler.Push()
+	this.pScheduler.Push( req )
 	return this
 }
 
@@ -93,6 +114,12 @@ func ( this *Spider ) AddRequests ( reqs []*request.Request ) *Spider{
 	for _, req := range reqs{
 		this.AddRequest( req )
 	}
+	return this
+}
+
+
+func ( this *Spider ) AddPipeline( p pipeline.Pipeline ) *Spider{
+	this.pPipelines = append( this.pPipelines, p )
 	return this
 }
 
