@@ -2,10 +2,12 @@ package main
 import(
 	"github.com/johnlion/spider/core/common/xlog"
 
-	"github.com/johnlion/spider/core/common/spider"
+
 	"fmt"
 	"github.com/johnlion/spider/core/common/request"
 	"github.com/johnlion/spider/core/common/page"
+	"github.com/johnlion/spider/core/common/downloader"
+	"github.com/PuerkitoBio/goquery"
 )
 
 //
@@ -38,18 +40,29 @@ func main() {
 	xlog.LogInst().Open()
 	xlog.LogInst().LogInfo("Spider is running ... ")
 	xlog.LogInst().Close()
-	// Spider input
-	// PageProcesser
-	// Task name used in Pipeline for record;
-	sp := spider.NewSpider( "www.75xs.com",  NewMyPageProcesser() )
-
-	req := request.NewRequest( "http://baike.baidu.com/view/1628025.htm?fromtitle=http&fromid=243074&type=syn",
-		"html", "", "GET", "", nil, nil, nil, nil)
-	sp.GetByRequest( req )
 
 
+	var req *request.Request
+	req = request.NewRequest("http://live.sina.com.cn/zt/l/v/finance/globalnews1/", "html", "", "GET", "", nil, nil, nil, nil)
 
-	fmt.Printf("%s", "---------------------------------------------------------------------------------------------------\r\n")
-	//fmt.Printf( "%$v\n", req )
-	//fmt.Printf( "%v\n", sp )
+	var dl downloader.Downloader
+	dl = downloader.NewDownloaderHttp()
+
+	var p *page.Page
+	p = dl.Download( req )
+
+	var doc *goquery.Document
+	doc = p.GetHtmlParser()
+	//fmt.Println(doc)
+	//body := p.GetBodyStr()
+	//fmt.Println(body)
+
+	var s *goquery.Selection
+	s = doc.Find("body")
+	if s.Length() < 1 {
+		xlog.StraceInst().Println("html parse failed!")
+	}else{
+		fmt.Printf( "%v", s )
+
+	}
 }

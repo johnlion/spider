@@ -65,6 +65,29 @@ func ( this *Spider ) Taskname() string{
 	return this.tastname
 }
 
+
+// Deal with one url and return the PageItems.
+func (this *Spider) Get(url string, respType string) *pageItems.PageItems {
+	req := request.NewRequest(url, respType, "", "GET", "", nil, nil, nil, nil)
+	return this.GetByRequest(req)
+}
+
+// Deal with several urls and return the PageItems slice.
+func (this *Spider) GetAll(urls []string, respType string) []*pageItems.PageItems {
+	for _, u := range urls {
+		req := request.NewRequest(u, respType, "", "GET", "", nil, nil, nil, nil)
+		this.AddRequest(req)
+	}
+
+	pip := pipeline.NewCollectPipelinePageItems()
+	this.AddPipeline(pip)
+
+	this.Run()
+
+	return pip.GetCollected()
+}
+
+
 //func ( this *Spider ) Get( url string, respType string ) *pageItems.PageItems{
 //	req := request.NewRequest( url, respType, "", "GET", "", nil, nil, nil, nil )
 //	return this.GetByRequest(req)
@@ -94,8 +117,6 @@ func ( this *Spider ) GetAllByRequest( reqs []*request.Request ) []*pageItems.Pa
 
 	this.Run()
 
-	fmt.Printf( "%v", pip.GetCollected() )
-	os.Exit(1)
 	return pip.GetCollected()
 
 }
@@ -174,7 +195,25 @@ func ( this *Spider ) pageProcess( req *request.Request ){
 	//download page
 	for i:=0; i<3; i++{
 		this.sleep()
+		xlog.StraceInst().Println( " sleep pageProcess ..." )
 		p = this.pDownloader.Download(  req )
+	}
+
+	if !p.IsSucc() { // if fail do not need process
+		return
+	}
+
+	this.pPageProcesser.Processer( p )
+	for _, req := range p.GetTargetRequests() {
+		this.AddRequest(req)
+	}
+
+	// output
+	if !p.GetSkip() {
+		for _, pip := range this.pPipelines {
+			fmt.Println("%v",p.GetPageItems().GetAll())
+			pip.Process(p.GetPageItems(), this)
+		}
 	}
 
 
@@ -198,11 +237,75 @@ func ( this *Spider ) GetDownloader() downloader.Downloader {
 	return this.pDownloader
 }
 
-//func ( this *Spider ) AddUrl( url string, respType string ) *Spider{
-//	req := request.NewRequest(url, respType, "", "GET", "", nil, nil, nil, nil)
-//	this.AddRequest(req.AddHeaderFile(headerFile).AddProxyHost(proxyHost))
-//return this
-//}
+func (this *Spider) SetThreadnum(i uint) *Spider {
+	this.threadnum = i
+	return this
+}
+
+func (this *Spider) GetThreadnum() uint {
+	return this.threadnum
+}
+
+// If exit when each crawl task is done.
+// If you want to keep spider in memory all the time and add url from outside, you can set it true.
+func (this *Spider) SetExitWhenComplete(e bool) *Spider {
+	this.exitWhenComplete = e
+	return this
+}
+
+func (this *Spider) GetExitWhenComplete() bool {
+	return this.exitWhenComplete
+}
+
+// The OpenFileLog initialize the log path and open log.
+// If log is opened, error info or other useful info in spider will be logged in file of the filepath.
+// Log command is mlog.LogInst().LogError("info") or mlog.LogInst().LogInfo("info").
+// Spider's default log is closed.
+// The filepath is absolute path.
+func (this *Spider) OpenFileLog(filePath string) *Spider {
+	xlog.InitFileLog(true, filePath)
+	return this
+}
+
+// OpenFileLogDefault open file log with default file path like "WD/log/log.2014-9-1".
+func (this *Spider) OpenFileLogDefault() *Spider {
+	xlog.InitFileLog(true, "")
+
+	return this
+}
+
+// The CloseFileLog close file log.
+func (this *Spider) CloseFileLog() *Spider {
+	xlog.InitFileLog(false, "")
+	return this
+}
+
+// The OpenStrace open strace that output progress info on the screen.
+// Spider's default strace is opened.
+func (this *Spider) OpenStrace() *Spider {
+	xlog.StraceInst().Open()
+	return this
+}
+
+// The CloseStrace close strace.
+func (this *Spider) CloseStrace() *Spider {
+	xlog.StraceInst().Close()
+	return this
+}
+
+// The SetSleepTime set sleep time after each crawl task.
+// The unit is millisecond.
+// If sleeptype is "fixed", the s is the sleep time and e is useless.
+// If sleeptype is "rand", the sleep time is rand between s and e.
+func (this *Spider) SetSleepTime(sleeptype string, s uint, e uint) *Spider {
+	this.sleeptype = sleeptype
+	this.startSleeptime = s
+	this.endSleeptime = e
+	if this.sleeptype == "rand" && this.startSleeptime >= this.endSleeptime {
+		panic("startSleeptime must smaller than endSleeptime")
+	}
+
+}
 
 func ( this *Spider ) sleep(){
 	if  this.sleeptype == "fixed" {
@@ -212,3 +315,46 @@ func ( this *Spider ) sleep(){
 		time.Sleep(  time.Duration(  sleeptime ) * time.Millisecond  )
 	}
 }
+
+func (this *Spider) AddUrl(url string, respType string) *Spider {
+	req := request.NewRequest(url, respType, "", "GET", "", nil, nil, nil, nil)
+	this.AddRequest(req)
+	return this
+}
+
+func (this *Spider) AddUrlEx(url string, respType string, headerFile string, proxyHost string) *Spider {
+	req := request.NewRequest(url, respType, "", "GET", "", nil, nil, nil, nil)
+	this.AddRequest(req.AddHeaderFile(headerFile).AddProxyHost(proxyHost))
+	return this
+}
+
+func (this *Spider) AddUrlWithHeaderFile(url string, respType string, headerFile string) *Spider {
+	req := request.NewRequestWithHeaderFile(url, respType, headerFile)
+	this.AddRequest(req)
+	return this
+}
+
+func (this *Spider) AddUrls(urls []string, respType string) *Spider {
+	for _, url := range urls {
+		req := request.NewRequest(url, respType, "", "GET", "", nil, nil, nil, nil)
+		this.AddRequest(req)
+	}
+	return this
+}
+
+func (this *Spider) AddUrlsWithHeaderFile(urls []string, respType string, headerFile string) *Spider {
+	for _, url := range urls {
+		req := request.NewRequestWithHeaderFile(url, respType, headerFile)
+		this.AddRequest(req)
+	}
+	return this
+}
+
+func (this *Spider) AddUrlsEx(urls []string, respType string, headerFile string, proxyHost string) *Spider {
+	for _, url := range urls {
+		req := request.NewRequest(url, respType, "", "GET", "", nil, nil, nil, nil)
+		this.AddRequest(req.AddHeaderFile(headerFile).AddProxyHost(proxyHost))
+	}
+	return this
+}
+
